@@ -13,11 +13,16 @@ public class Worker<T> extends Thread {
     @Override
     public void run() {
         for (int i=0; i<4; ++i) {
+            String value = null;
+
             try {
-                System.out.println("ID: " + id + " - " + boundedLazy.get(1000));
+                String str = boundedLazy.get(1000).toString();
+                value = str.replace("Optional", "").replace(".", "").replace("[", "").replace("]", "");
             } catch (Exception e) {
                 e.printStackTrace();
             }
+
+            System.out.println("Thread ID: " + id + " ---> " + value);
         }
     }
 }
