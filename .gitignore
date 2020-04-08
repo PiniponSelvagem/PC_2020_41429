@@ -6,3 +6,4 @@ build
 
 # Ignore intelliJ metadata
 .idea
+out
