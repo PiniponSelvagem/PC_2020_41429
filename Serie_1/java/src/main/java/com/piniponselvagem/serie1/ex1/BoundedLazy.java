@@ -33,7 +33,7 @@ public class BoundedLazy<T> {
                 do {
                     monitor.wait(timeoutLeft);
                     timeoutLeft -= System.currentTimeMillis() - time;
-                    if (state == CREATING && (timeoutLeft < timeout)) {
+                    if (state == CREATING && (timeoutLeft <= 0)) {
                         return Optional.empty();
                     }
                 } while (state != CREATED);
