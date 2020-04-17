@@ -33,9 +33,8 @@ public class BoundedLazy<T> {
                 do {
                     monitor.wait(timeoutLeft);
                     timeoutLeft -= System.currentTimeMillis() - time;
-                    if (state == CREATING && (timeoutLeft <= 0)) {
-                        return Optional.empty();
-                    }
+                    if (state == ERROR) throw exception;
+                    if (state == CREATING && (timeoutLeft <= 0)) return Optional.empty();
                 } while (state != CREATED);
             }
             if (state == CREATED) {
@@ -45,9 +44,7 @@ public class BoundedLazy<T> {
                 }
                 state = CREATING;
             }
-            if (state == ERROR) {
-                throw exception;
-            }
+            if (state == ERROR) throw exception;
         }
 
         Optional<T> v = Optional.empty();
