@@ -7,3 +7,4 @@ build
 # Ignore intelliJ metadata
 .idea
 out
+/Serie_1/gradle/*
