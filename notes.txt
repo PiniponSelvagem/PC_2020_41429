@@ -1,0 +1,36 @@
+
+Serie 1
+    4.
+        put -> add 'message' and DO NOT block current thread
+
+        transfer -> add 'message', guarantee 'message' gets consumed/received and CAN block current thread
+            - return true               // msg was received
+            - return false              // timeout
+            - wait gets interrupted     // throws InterruptedException
+            - when return false, discard message
+        
+        take -> get 'message' from queue
+            - return T                      // if success
+            - return null                   // if timeout
+            - throws InterruptedException   // if was InterruptedException
+        
+        Thread 1 ---> TAKE: timeout = 1000
+        Thread 2 ---> PUT:  "Message from 2 to 1"
+        Thread 1 ---> TAKE: "Message from 2 to 1"
+
+        Thread 2 ---> PUT:  "Message from 2 to 1, but 3 takes first and 1 times out showing NULL"
+        Thread 1 ---> SLEEPING FOR 2000
+        Thread 3 ---> TAKE: timeout = 1000
+        Thread 3 ---> TAKE: "Message from 2 to 1, but 3 takes first and 1 times out showing NULL"
+        Thread 1 ---> TAKE: timeout = 1000
+        Thread 1 ---> TAKE: "null"
+
+        Thread 2 ---> TRANSFER: "Message from 2 to 1", timeout = 2000
+        Thread 1 ---> SLEEPING for 1000
+        Thread 1 ---> TAKE: timeout = 500
+        Thread 1 ---> TAKE: "Message from 2 to 1"
+
+        Thread 2 ---> TRANSFER: "Message from 2 to 1", timeout = 1000
+        Thread 1 ---> SLEEPING for 2000
+        Thread 1 ---> TAKE: timeout = 500
+        Thread 1 ---> TAKE: returned false
