@@ -8,14 +8,16 @@ import java.util.Optional;
 
 public class BroadcastBoxTest {
 
+    private final String MESSAGE = "THIS IS A BROADCAST TEST MESSAGE";
+
     @Test
     public void Thread1And2_receiveFrom_Thread3() throws InterruptedException {
         BroadcastBox<String> box = new BroadcastBox<>();
-        Server thread3 = new Server(3, box);
+        Server<String> thread3 = new Server<>(3, box, MESSAGE);
 
         long timeout = 2000;
-        Client thread1 = new Client(1, timeout, box);
-        Client thread2 = new Client(2, timeout, box);
+        Client<String> thread1 = new Client<>(1, timeout, box);
+        Client<String> thread2 = new Client<>(2, timeout, box);
 
         thread1.start();
         thread2.start();
@@ -25,8 +27,8 @@ public class BroadcastBoxTest {
         thread1.join();
         thread2.join();
         thread3.join();
-        Assert.assertEquals(Optional.of(Server.MESSAGE), thread1.getMessage());
-        Assert.assertEquals(Optional.of(Server.MESSAGE), thread2.getMessage());
+        Assert.assertEquals(Optional.of(MESSAGE), thread1.getMessage());
+        Assert.assertEquals(Optional.of(MESSAGE), thread2.getMessage());
         Assert.assertEquals(2, thread3.getDeliveredCount());
     }
 
@@ -34,8 +36,8 @@ public class BroadcastBoxTest {
     public void Thread1And2_receive_timeout() throws InterruptedException {
         BroadcastBox<String> box = new BroadcastBox<>();
         long timeout = 2000;
-        Client thread1 = new Client(1, timeout, box);
-        Client thread2 = new Client(2, timeout, box);
+        Client<String> thread1 = new Client<>(1, timeout, box);
+        Client<String> thread2 = new Client<>(2, timeout, box);
 
         TimeoutHolder th = new TimeoutHolder(timeout);
         thread1.start();
@@ -51,7 +53,7 @@ public class BroadcastBoxTest {
     @Test
     public void Thread3_notDeliver() throws InterruptedException {
         BroadcastBox<String> box = new BroadcastBox<>();
-        Server thread3 = new Server(3, box);
+        Server<String> thread3 = new Server<>(3, box, MESSAGE);
 
         thread3.start();
 
@@ -62,11 +64,11 @@ public class BroadcastBoxTest {
     @Test
     public void Thread1_receiveFrom_Thread3_And_Thread2_notReceived() throws InterruptedException {
         BroadcastBox<String> box = new BroadcastBox<>();
-        Server thread3 = new Server(3, box);
+        Server<String> thread3 = new Server<>(3, box, MESSAGE);
 
         long timeout = 2000;
-        Client thread1 = new Client(1, timeout, box);
-        Client thread2 = new Client(2, timeout, box);
+        Client<String> thread1 = new Client<>(1, timeout, box);
+        Client<String> thread2 = new Client<>(2, timeout, box);
 
         thread1.start();
         Thread.sleep(timeout/2);
@@ -77,7 +79,7 @@ public class BroadcastBoxTest {
         thread1.join();
         thread2.join();
         thread3.join();
-        Assert.assertEquals(Optional.of(Server.MESSAGE), thread1.getMessage());
+        Assert.assertEquals(Optional.of(MESSAGE), thread1.getMessage());
         Assert.assertEquals(Optional.empty(), thread2.getMessage());
         Assert.assertEquals(1, thread3.getDeliveredCount());
     }

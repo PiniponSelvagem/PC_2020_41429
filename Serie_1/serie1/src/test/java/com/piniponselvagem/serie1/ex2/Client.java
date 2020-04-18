@@ -2,13 +2,13 @@ package com.piniponselvagem.serie1.ex2;
 
 import java.util.Optional;
 
-public class Client extends Thread {
-    private final BroadcastBox<String> broadcastBox;
+public class Client<T> extends Thread {
+    private final BroadcastBox<T> broadcastBox;
     private final String prefix;
     private final long timeout;
-    private Optional<String> message;
+    private Optional<T> message;
 
-    public Client(int id, long timeout, BroadcastBox<String> broadcastBox) {
+    public Client(int id, long timeout, BroadcastBox<T> broadcastBox) {
         this.broadcastBox = broadcastBox;
         this.timeout = timeout;
         this.prefix = "Thread ID: " + id + " ---> ";
@@ -23,7 +23,7 @@ public class Client extends Thread {
         }
     }
 
-    public Optional<String> getMessage() {
+    public Optional<T> getMessage() {
         return message;
     }
 }

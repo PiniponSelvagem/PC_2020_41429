@@ -12,6 +12,16 @@ Serie 1
 
 
 
+
+    3.
+        exchange -> exchange data between 1 pair of threads (2 Threads)
+            - success -> return Optional.of(myData)
+            - timed out -> return Optional.empty()
+            - if was InterruptedException -> throws InterruptedException
+
+
+
+
     4.
         put -> add 'message' and DO NOT block current thread
 
