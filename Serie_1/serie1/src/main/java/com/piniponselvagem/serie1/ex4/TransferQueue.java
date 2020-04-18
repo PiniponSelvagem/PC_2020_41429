@@ -8,6 +8,11 @@ public class TransferQueue<T> {
     private final LinkedList<T> queue = new LinkedList<>();
 
     public TransferQueue() {
+
+        // TODO: Ver blackboard-10.md
+
+        // TODO: Tests
+
     }
 
     public void put(T message) {
@@ -26,6 +31,11 @@ public class TransferQueue<T> {
             long timeoutLeft = timeout;
             do {
                 monitor.wait(timeoutLeft);
+                if (Thread.interrupted()) {
+                    queue.remove(message);
+                    throw new InterruptedException();
+                }
+
                 timeoutLeft -= System.currentTimeMillis() - time;
                 if (timeoutLeft <= 0) {
                     queue.remove(message);
@@ -43,6 +53,8 @@ public class TransferQueue<T> {
             long timeoutLeft = timeout;
             do {
                 monitor.wait(timeoutLeft);
+                if (Thread.interrupted()) throw new InterruptedException();
+
                 timeoutLeft -= System.currentTimeMillis() - time;
                 if (timeoutLeft <= 0 && queue.isEmpty()) {
                     return null;

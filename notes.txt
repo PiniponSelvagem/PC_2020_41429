@@ -1,5 +1,17 @@
 
 Serie 1
+    2.
+        deliverToAll -> send 'message' to all threads waiting
+            - return number of threads awakened
+            - if no threads waiting -> return 0 and discard message
+        
+        receive -> receive message
+            - success -> return Optional.of(message)
+            - timed out -> return Optional.empty()
+            - if was InterruptedException -> throws InterruptedException
+
+
+
     4.
         put -> add 'message' and DO NOT block current thread
 
