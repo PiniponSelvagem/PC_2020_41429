@@ -27,13 +27,11 @@ public class BroadcastBox<T> {
 
     public int deliverToAll(T message) {
         synchronized (monitor) {
-            if (request.nWaiters == 0)
-                return 0;
-
-            request.message = message;
-            request.hasMessage = true;
-            monitor.notifyAll();
-
+            if (request.nWaiters != 0) {
+                request.message = message;
+                request.hasMessage = true;
+                monitor.notifyAll();
+            }
             return request.nWaiters;
         }
     }
