@@ -11,15 +11,11 @@ Serie 1
             - if was InterruptedException -> throws InterruptedException
 
 
-
-
     3.
         exchange -> exchange data between 1 pair of threads (2 Threads)
             - success -> return Optional.of(myData)
             - timed out -> return Optional.empty()
             - if was InterruptedException -> throws InterruptedException
-
-
 
 
     4.
@@ -56,3 +52,33 @@ Serie 1
         Thread 1 ---> SLEEPING for 2000
         Thread 1 ---> TAKE: timeout = 500
         Thread 1 ---> TAKE: returned false
+
+
+    5.
+        ThreadPoolExecutor(int maxPoolSize, int keepAliveTime)
+            -> if (workerThreads < maxPoolSize && !isAvailableWorkerThreads) { new WorkerThread(command received) }
+            -> if (workerThread.getRunTimeWithoutNewCommand() > keepAliveTime) { workerThread.terminate() }
+            -> pool.getNumberOfWorkingThreads() -> [0..maxPoolSize]
+
+        Result<T>
+            - isComplete -> true if command was executed, else false
+            - tryCancel -> true if could cancel command, else false
+            - get - success -> return command.value
+                    wasCanceled -> throw CancellationException
+                    timed out -> return Optional.empty(), if could not calculate command.value in time
+                    interrupted -> throw InterruptedException, if worker thread was interrupted
+                    command.throwedException -> throw Exception that the Callable thrown
+
+        Threads Using the ExecutorPool: --------------------------------------------------------------------------
+        execute -> add work to the pool
+            - returns Result<T> without blocking
+        
+        shutdown -> tell executor to shutdown
+            - returns without blocking
+            - from this moment, any call to execute throws RejectedExecutionException and dont accept new work
+            - currently running command processing should terminate normally
+
+        awaitTermination -> thread that calls this method, wait for shutdown process to finish
+            - return true, if all active workers terminated successfully
+            - return false, if timed out and shutdown process hasnt terminated
+            - throw InterruptedException, if was interrupted

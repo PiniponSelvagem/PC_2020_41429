@@ -2,12 +2,18 @@ package com.piniponselvagem.serie1.ex2;
 
 import com.piniponselvagem.serie1.utils.TimeoutHolder;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
-public class BroadcastBox<T> {
+@Deprecated
+public class OldUsingList_BroadcastBox<T> {
 
     /**
      * NOTE:
+     *      This is an old implementation using List<Request<T>>.
+     *      CURRENT implementation: {@link BroadcastBox}
+     *
      *      It is known that if the deliver thread sends a new broadcast
      *      without all threads receiving in time, it will lose the first broadcast.
      *      That's an intended behaviour, reinforcing the fact that the current last
@@ -17,25 +23,28 @@ public class BroadcastBox<T> {
 
     private static class Request<T> {
         T message;
-        int nWaiters;
         boolean hasMessage;
+        boolean isDone;
     }
 
     private final Object monitor = new Object();
-    private final Request<T> request = new Request<>();
+    private final List<Request<T>> reqQueue = new ArrayList<>();
 
 
     public int deliverToAll(T message) {
+        int nThreads = 0;
         synchronized (monitor) {
-            if (request.nWaiters == 0)
-                return 0;
+            if (reqQueue.isEmpty())
+                return nThreads;
 
-            request.message = message;
-            request.hasMessage = true;
+            for (Request<T> req : reqQueue) {
+                req.message = message;
+                req.hasMessage = true;
+                ++nThreads;
+            }
             monitor.notifyAll();
-
-            return request.nWaiters;
         }
+        return nThreads;
     }
 
     public Optional<T> receive(long timeout) throws InterruptedException {
@@ -43,36 +52,35 @@ public class BroadcastBox<T> {
             if (Thread.interrupted())
                 throw new InterruptedException();
 
-            ++request.nWaiters;
-            TimeoutHolder th = new TimeoutHolder(timeout);
+            Request<T> request = new Request<>();
+            reqQueue.add(request);
 
+            TimeoutHolder th = new TimeoutHolder(timeout);
             do {
                 try {
                     if ((timeout = th.getTimeoutLeft()) <= 0) {
-                        checkIfNoWaitersAndAffectHasMessage();
+                        reqQueue.remove(request);
                         return Optional.empty();
                     }
                     if (!request.hasMessage) {
                         monitor.wait(timeout);
                     }
+                    else {
+                        request.isDone = true;
+                    }
                 } catch (InterruptedException ie) {
-                    if (request.hasMessage) {
+                    if (request.isDone) {
                         Thread.currentThread().interrupt();
-                        checkIfNoWaitersAndAffectHasMessage();
                         return Optional.of(request.message);
                     }
+                    reqQueue.remove(request);
                     throw ie;
                 }
-            } while (!request.hasMessage);
+            } while (!request.isDone);
 
-            checkIfNoWaitersAndAffectHasMessage();
-            return Optional.of(request.message);
-        }
-    }
-
-    private void checkIfNoWaitersAndAffectHasMessage() {
-        if (--request.nWaiters == 0) {
-            request.hasMessage = false;
+            Optional<T> message = Optional.of(request.message);
+            reqQueue.remove(request);
+            return message;
         }
     }
 }
