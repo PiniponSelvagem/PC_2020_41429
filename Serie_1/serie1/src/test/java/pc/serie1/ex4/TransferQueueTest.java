@@ -5,7 +5,7 @@ import org.junit.Test;
 
 public class TransferQueueTest {
 
-    protected static String MESSAGE = "Message from 1 to 2";
+    protected static String MESSAGE = "Sample Message";
 
     @Test
     public void senderPut_receiverTake_inTime() {

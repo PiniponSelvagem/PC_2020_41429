@@ -26,10 +26,11 @@ public class TransferQueue<T> {
 
             TimeoutHolder th = new TimeoutHolder(timeout);
             do {
-                monitor.wait(timeout);
-                if (Thread.interrupted()) {
+                try {
+                    monitor.wait(timeout);
+                } catch(InterruptedException e) {
                     queue.remove(message);
-                    throw new InterruptedException();
+                    throw e;
                 }
 
                 if ((timeout = th.getTimeoutLeft()) <= 0 && queue.contains(message)) {
@@ -37,17 +38,16 @@ public class TransferQueue<T> {
                     return false;
                 }
             } while (queue.contains(message));
+            return true;
         }
-        return true;
     }
 
     public T take(long timeout) throws InterruptedException {
-        T value;
         synchronized (monitor) {
+            T value;
             TimeoutHolder th = new TimeoutHolder(timeout);
             do {
                 monitor.wait(timeout);
-                if (Thread.interrupted()) throw new InterruptedException();
 
                 if ((timeout = th.getTimeoutLeft()) <= 0 && queue.isEmpty()) {
                     return null;
@@ -55,7 +55,7 @@ public class TransferQueue<T> {
             } while (queue.isEmpty());
             value = queue.removeLast();
             monitor.notify();
+            return value;
         }
-        return value;
     }
 }
