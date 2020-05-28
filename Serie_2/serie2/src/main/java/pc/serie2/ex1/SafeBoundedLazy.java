@@ -1,6 +1,7 @@
 package pc.serie2.ex1;
 
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 public class SafeBoundedLazy<E> {
@@ -32,10 +33,10 @@ public class SafeBoundedLazy<E> {
     private final ValueHolder<E> CREATING = new ValueHolder<>();
 
     // The current state
-    private ValueHolder<E> state = null;
+    private final AtomicReference<ValueHolder<E>> state = new AtomicReference<>(null);
 
     // When the synchronizer is in ERROR state, the exception is hold here
-    Throwable errorException;
+    volatile Throwable errorException;
 
     // Construct a BoundedLazy
     public SafeBoundedLazy(Supplier<E> supplier, int lives) {
@@ -48,32 +49,60 @@ public class SafeBoundedLazy<E> {
     // Returns an instance of the underlying type
     public Optional<E> get() throws Throwable {
         while (true) {
-            if (state == ERROR)
-                throw errorException;
-            if (state == null) {
-                state = CREATING;
-                try {
-                    E value = supplier.get();
-                    if (lives > 1) {
-                        state = new ValueHolder<E>(value, lives - 1);  //lives remaining
-                    } else {
-                        state = null;   // the unique live was consumed
+            // step 1
+            ValueHolder<E> observedState = state.get();
+
+            // step 2 (state == ERROR)
+            if (observedState == ERROR) {
+                if (state.compareAndSet(observedState, ERROR))
+                    throw errorException;
+            }
+
+            // step 2 (state == null)
+            if (observedState == null) {
+                // step 2.i
+                if (state.compareAndSet(observedState, CREATING)) {
+                    // Guaranteed to be the only thread creating
+                    try {
+                        E value = supplier.get();
+                        // step 3
+                        if (lives > 1) {
+                            state.set(new ValueHolder<E>(value, lives - 1));  //lives remaining
+                        } else {
+                            state.set(null);   // the unique live was consumed
+                        }
+                        // step 3.i
+                        return Optional.of(value);
+                    } catch (Throwable ex) {
+                        errorException = ex;
+                        // step 3.i
+                        state.set(ERROR);
+                        throw ex;
                     }
-                    return Optional.of(value);
-                } catch (Throwable ex) {
-                    errorException = ex;
-                    state = ERROR;
-                    throw ex;
                 }
-            } else if (state == CREATING) {
+            }
+            if (observedState == CREATING) {
                 do {
                     Thread.yield();
-                } while (state == CREATING); // spin until state != CREATING
+                    observedState = state.get();
+                } while (!state.compareAndSet(observedState, observedState)); // spin until state != CREATING
             } else { // state is CREATED: we have at least one life
-                Optional<E> retValue = Optional.of(state.value);
-                if (--state.availableLives == 0)
-                    state = null;
-                return retValue;
+                observedState = state.get();
+                try {
+                    Optional<E> retValue = Optional.of(observedState.value);
+
+                    // step 2.i
+                    if (observedState.availableLives-- <= 0) {
+                        // step 3
+                        if (state.compareAndSet(observedState, null)) {
+                            return retValue;
+                        }
+                    }
+                    if (observedState.availableLives > 0)
+                        return retValue;
+                } catch (NullPointerException e) {
+                    ; // "abafator" in case 'observedState == null' when calling 'observedState.value'
+                }
             }
         }
     }
