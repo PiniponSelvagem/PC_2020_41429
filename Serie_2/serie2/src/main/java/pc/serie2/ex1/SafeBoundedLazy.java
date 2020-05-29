@@ -84,8 +84,8 @@ public class SafeBoundedLazy<E> {
             if (observedState == CREATING) {
                 do {
                     Thread.yield();
-                    observedState = state.get();
-                } while (!state.compareAndSet(observedState, observedState)); // spin until state != CREATING
+                    //observedState = state.get();
+                } while (state.get()==CREATING); // spin until state != CREATING
             } else { // state is CREATED: we have at least one life
                 observedState = state.get();
                 try {
@@ -101,7 +101,7 @@ public class SafeBoundedLazy<E> {
                     if (observedState.availableLives > 0)
                         return retValue;
                 } catch (NullPointerException e) {
-                    ; // "abafator" in case 'observedState == null' when calling 'observedState.value'
+                    ; // in case 'observedState == null' when calling 'observedState.value'
                 }
             }
         }

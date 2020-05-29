@@ -11,8 +11,12 @@ import java.util.function.Supplier;
 
 public class SafeBoundedLazyTest {
 
-    private static final Iterable<Integer> list = List.of(1, 2, 3, 4, 5, 6, 7, 8);
+    private static final Iterable<Integer> list = List.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
     private static int sumExpected;
+
+    private static final int dupValues = 2;
+    private static final int threadCycles = dupValues * 4;
+
 
     @BeforeClass
     public static void init() {
@@ -55,13 +59,12 @@ public class SafeBoundedLazyTest {
 
     @Test
     public void getConcurrentValues() {
-        int dup = 2;
-        SafeBoundedLazy<Integer> boundedLazy = new SafeBoundedLazy<>(supplierInstant, dup);
+        SafeBoundedLazy<Integer> boundedLazy = new SafeBoundedLazy<>(supplierInstant, dupValues);
 
-        WorkerThread w1 = new WorkerThread(1, boundedLazy, 4, 1000);
-        WorkerThread w2 = new WorkerThread(2, boundedLazy, 4, 1000);
-        WorkerThread w3 = new WorkerThread(3, boundedLazy, 4, 1000);
-        WorkerThread w4 = new WorkerThread(4, boundedLazy, 4, 1000);
+        WorkerThread w1 = new WorkerThread(1, boundedLazy, threadCycles, 1000);
+        WorkerThread w2 = new WorkerThread(2, boundedLazy, threadCycles, 1000);
+        WorkerThread w3 = new WorkerThread(3, boundedLazy, threadCycles, 1000);
+        WorkerThread w4 = new WorkerThread(4, boundedLazy, threadCycles, 1000);
 
         w1.start();
         w2.start();
@@ -82,18 +85,17 @@ public class SafeBoundedLazyTest {
                         w3.getSum().orElse(0) +
                         w4.getSum().orElse(0);
 
-        Assert.assertEquals(sumExpected * dup, sumActual);
+        Assert.assertEquals(sumExpected * dupValues, sumActual);
     }
 
     @Test
     public void getConcurrentValues_WithSleep() {
-        int dup = 2;
-        SafeBoundedLazy<Integer> boundedLazy = new SafeBoundedLazy<>(supplierWithSleep, dup);
+        SafeBoundedLazy<Integer> boundedLazy = new SafeBoundedLazy<>(supplierWithSleep, dupValues);
 
-        WorkerThread w1 = new WorkerThread(1, boundedLazy, 4, 1000);
-        WorkerThread w2 = new WorkerThread(2, boundedLazy, 4, 1000);
-        WorkerThread w3 = new WorkerThread(3, boundedLazy, 4, 1000);
-        WorkerThread w4 = new WorkerThread(4, boundedLazy, 4, 1000);
+        WorkerThread w1 = new WorkerThread(1, boundedLazy, threadCycles, 1000);
+        WorkerThread w2 = new WorkerThread(2, boundedLazy, threadCycles, 1000);
+        WorkerThread w3 = new WorkerThread(3, boundedLazy, threadCycles, 1000);
+        WorkerThread w4 = new WorkerThread(4, boundedLazy, threadCycles, 1000);
 
         w1.start();
         w2.start();
@@ -114,13 +116,12 @@ public class SafeBoundedLazyTest {
                 w3.getSum().orElse(0) +
                 w4.getSum().orElse(0);
 
-        Assert.assertEquals(sumExpected * dup, sumActual);
+        Assert.assertEquals(sumExpected * dupValues, sumActual);
     }
 
     @Test
     public void shouldThrowNoSuchElementException() {
-        int dup = 2;
-        SafeBoundedLazy<Integer> boundedLazy = new SafeBoundedLazy<>(supplierThrowEx, dup);
+        SafeBoundedLazy<Integer> boundedLazy = new SafeBoundedLazy<>(supplierThrowEx, dupValues);
 
         WorkerThread w1 = new WorkerThread(1, boundedLazy, Integer.MAX_VALUE, 1000);
         WorkerThread w2 = new WorkerThread(2, boundedLazy, Integer.MAX_VALUE, 1000);
