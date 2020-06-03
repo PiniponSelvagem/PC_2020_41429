@@ -5,15 +5,14 @@ import java.util.Optional;
 public class WorkerThread extends Thread {
 
     private SafeBoundedLazy<Integer> boundedLazy;
-    private final int id, cycles, timeout;
+    private final int id, cycles;
     private Optional<Integer> sumTotal = Optional.of(0);
     private Throwable e;
 
-    public WorkerThread(int id, SafeBoundedLazy<Integer> boundedLazy, int cycles, int timeout) {
+    public WorkerThread(int id, SafeBoundedLazy<Integer> boundedLazy, int cycles) {
         this.boundedLazy = boundedLazy;
         this.id = id;
         this.cycles = cycles;
-        this.timeout = timeout;
     }
 
     @Override

@@ -35,22 +35,6 @@ public class SafeBoundedLazyTest {
             throw new NoSuchElementException();
         }
     };
-    private Supplier<Integer> supplierWithSleep = new Supplier<>() {
-        private Iterator<Integer> it = list.iterator();
-
-        @Override
-        public Integer get() {
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-
-            if (it.hasNext())
-                return it.next();
-            throw new NoSuchElementException();
-        }
-    };
     private Supplier<Integer> supplierThrowEx = () -> {
         throw new NoSuchElementException();
     };
@@ -61,10 +45,10 @@ public class SafeBoundedLazyTest {
     public void getConcurrentValues() {
         SafeBoundedLazy<Integer> boundedLazy = new SafeBoundedLazy<>(supplierInstant, dupValues);
 
-        WorkerThread w1 = new WorkerThread(1, boundedLazy, threadCycles, 1000);
-        WorkerThread w2 = new WorkerThread(2, boundedLazy, threadCycles, 1000);
-        WorkerThread w3 = new WorkerThread(3, boundedLazy, threadCycles, 1000);
-        WorkerThread w4 = new WorkerThread(4, boundedLazy, threadCycles, 1000);
+        WorkerThread w1 = new WorkerThread(1, boundedLazy, threadCycles);
+        WorkerThread w2 = new WorkerThread(2, boundedLazy, threadCycles);
+        WorkerThread w3 = new WorkerThread(3, boundedLazy, threadCycles);
+        WorkerThread w4 = new WorkerThread(4, boundedLazy, threadCycles);
 
         w1.start();
         w2.start();
@@ -89,42 +73,11 @@ public class SafeBoundedLazyTest {
     }
 
     @Test
-    public void getConcurrentValues_WithSleep() {
-        SafeBoundedLazy<Integer> boundedLazy = new SafeBoundedLazy<>(supplierWithSleep, dupValues);
-
-        WorkerThread w1 = new WorkerThread(1, boundedLazy, threadCycles, 1000);
-        WorkerThread w2 = new WorkerThread(2, boundedLazy, threadCycles, 1000);
-        WorkerThread w3 = new WorkerThread(3, boundedLazy, threadCycles, 1000);
-        WorkerThread w4 = new WorkerThread(4, boundedLazy, threadCycles, 1000);
-
-        w1.start();
-        w2.start();
-        w3.start();
-        w4.start();
-
-        try {
-            w1.join();
-            w2.join();
-            w3.join();
-            w4.join();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-
-        int sumActual = w1.getSum().orElse(0) +
-                w2.getSum().orElse(0) +
-                w3.getSum().orElse(0) +
-                w4.getSum().orElse(0);
-
-        Assert.assertEquals(sumExpected * dupValues, sumActual);
-    }
-
-    @Test
     public void shouldThrowNoSuchElementException() {
         SafeBoundedLazy<Integer> boundedLazy = new SafeBoundedLazy<>(supplierThrowEx, dupValues);
 
-        WorkerThread w1 = new WorkerThread(1, boundedLazy, Integer.MAX_VALUE, 1000);
-        WorkerThread w2 = new WorkerThread(2, boundedLazy, Integer.MAX_VALUE, 1000);
+        WorkerThread w1 = new WorkerThread(1, boundedLazy, Integer.MAX_VALUE);
+        WorkerThread w2 = new WorkerThread(2, boundedLazy, Integer.MAX_VALUE);
 
         w1.start();
         w2.start();
