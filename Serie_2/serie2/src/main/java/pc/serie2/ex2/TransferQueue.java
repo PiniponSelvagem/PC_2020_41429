@@ -1,38 +1,80 @@
 package pc.serie2.ex2;
 
-import pc.serie2.utils.TimeoutHolder;
-
-import java.util.LinkedList;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class TransferQueue<T> {
 
-    private final Object monitor = new Object();
-    private final LinkedList<T> queue = new LinkedList<>();
+    // the queue node
+    private static class Node<V> {
+        final AtomicReference<Node<V>> next;
+        final V item;
 
-    public TransferQueue() {
-    }
-
-    public void put(T message) {
-        synchronized (monitor) {
-            queue.addFirst(message);
-            monitor.notify();
+        Node(V item) {
+            next = new AtomicReference<>(null);
+            this.item = item;
         }
     }
 
-    public T take(long timeout) throws InterruptedException {
-        synchronized (monitor) {
-            T value;
-            TimeoutHolder th = new TimeoutHolder(timeout);
-            do {
-                monitor.wait(timeout);
+    // the head and tail references
+    private final AtomicReference<Node<T>> head;
+    private final AtomicReference<Node<T>> tail;
 
-                if ((timeout = th.getTimeoutLeft()) <= 0 && queue.isEmpty()) {
-                    return null;
+    public TransferQueue() {
+        Node<T> sentinel = new Node<>(null);
+        head = new AtomicReference<>(sentinel);
+        tail = new AtomicReference<>(sentinel);
+    }
+
+    // enqueue a datum
+    public void put(T item) {
+        Node<T> newNode = new Node<>(item);
+
+        while (true) {
+            Node<T> observedTail = tail.get();
+            Node<T> observedTailNext = observedTail.next.get();
+            if (observedTail == tail.get()) {	// confirm that we have a good tail, to prevent CAS failures
+                if (observedTailNext != null) { /** step A **/
+                    // queue in intermediate state, so advance tail for some other thread
+                    tail.compareAndSet(observedTail, observedTailNext);		/** step B **/
+                } else {
+                    // queue in quiescent state, try inserting new node
+                    if (observedTail.next.compareAndSet(null, newNode)) {	/** step C **/
+                        // advance the tail
+                        tail.compareAndSet(observedTail, newNode);	/** step D **/
+                        break;
+                    }
                 }
-            } while (queue.isEmpty());
-            value = queue.removeLast();
-            monitor.notify();
-            return value;
+            }
+        }
+    }
+
+
+    /*
+        This is implemented like Michael-Scott queue, but expected implementation is TransferQueue style.
+        Take should block curr thread if no items exit in the queue.
+        Check Professor reply e-mail 09-06-2020 10:36.
+        For now i will focus on 'Serie 3', and later come back to fix this algorithm.
+     */
+    // try to dequeue a datum
+    public T take() {
+        while (true) {
+            Node<T> observedHead = head.get();
+            Node<T> observedTail = tail.get();
+            Node<T> observedHeadNext = observedHead.next.get();
+
+            if (observedHead == head.get()) {   // confirm that we have a good head, to prevent CAS failures
+                if (observedHead == observedTail) {
+                    if (observedHeadNext == null) { // check if queue is empty
+                        return null;
+                    }
+                    // queue in intermediate state, so advance tail for some other thread
+                    tail.compareAndSet(observedTail, observedHeadNext);
+                } else {
+                    if (head.compareAndSet(observedHead, observedHeadNext)) {   // advance head to next position
+                        return observedHeadNext.item;
+                    }
+                }
+            }
         }
     }
 }
