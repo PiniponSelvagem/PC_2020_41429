@@ -8,3 +8,6 @@ build
 .idea
 out
 /Serie_1/gradle/*
+/Serie_3/.vs/
+/Serie_3/bin/
+/Serie_3/obj/
