@@ -2,16 +2,11 @@
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Serie3 {
+namespace Exercicio_1 {
     class Exercicio1 {
 
-        public static void start() {
-            testComputeAsync();     // Test solution proposed for our problem, might run a couple of times to see multiple cases since its using random
-        }
-        
-        
-        public static void testComputeAsync() {
-            Console.WriteLine(" --- COMPUTEASYNC TEST ---");
+        public static void testComputeAsync(int tryNumber) {
+            Console.WriteLine(" --- COMPUTEASYNC TEST - {0} ---", tryNumber);
 
             string[] elems = {"a", "bc", "def", "ghij", "jihg", "fed", "cd", "a"};
 
@@ -31,8 +26,8 @@ namespace Serie3 {
                     Console.WriteLine("{0}: {1}", error.GetType().Name, error.Message);
             }
             //Console.WriteLine("{0}, retry number: {1} - {2}", e.Message, i+1, argument);
-                        
-            Console.WriteLine();
+            
+            Console.WriteLine("\n");
         }
 
 
