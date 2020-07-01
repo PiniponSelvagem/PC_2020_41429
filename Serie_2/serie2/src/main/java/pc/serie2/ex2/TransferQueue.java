@@ -48,13 +48,6 @@ public class TransferQueue<T> {
         }
     }
 
-
-    /*
-        This is implemented like Michael-Scott queue, but expected implementation is TransferQueue style.
-        Take should block curr thread if no items exit in the queue.
-        Check Professor reply e-mail 09-06-2020 10:36.
-        For now i will focus on 'Serie 3', and later come back to fix this algorithm.
-     */
     // try to dequeue a datum
     public T take() {
         while (true) {
