@@ -17,7 +17,7 @@ public class BoundedBucket<T> {
         synchronized (monitor) {
             TimeoutHolder th = new TimeoutHolder(timeout);
             while (th.value() > 0 && bucket.size() >= capacity) {
-                monitor.wait();
+                monitor.wait(th.value());
             }
 
             if (th.value() <= 0)
@@ -33,7 +33,7 @@ public class BoundedBucket<T> {
         synchronized (monitor) {
             TimeoutHolder th = new TimeoutHolder(timeout);
             while (th.value() > 0 && bucket.isEmpty()) {
-                monitor.wait();
+                monitor.wait(th.value());
             }
 
             if (th.value() <= 0)

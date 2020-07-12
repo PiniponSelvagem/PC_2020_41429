@@ -22,7 +22,7 @@ public class MessageQueue<T> {
         synchronized (monitor) {
             TimeoutHolder th = new TimeoutHolder(timeout);
             while (queue.size() < nOfMessages) {
-                monitor.wait();
+                monitor.wait(th.value());
 
                 if (th.value() <= 0) {
                     return null;
