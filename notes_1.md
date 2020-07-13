@@ -224,3 +224,162 @@ class GenericSynchronizerMonitorStyleExplicitMonitor {
 	- A implementação do *exchanger* com base numa máquina de estados, poderia considerar três estados: *idle* quando aguarda a chegada da primeira *thread*; *exchanging*, depois da chegada da primeira *thread* de um par; *closing* depois da chegada da segunda *thread* até que a primeira *thread* reentre no monitor após notificação. Quando a primeira *thread* reentra no monitor completa a troca e coloca o *exchanger* no estado *idle*. Qualquer *thread* que entre no monitor quando o *exchanger* está no estado *closing*, bloqueia-se a aguardar que o *exchanger* transite para o estado *idle* (tornando a primeira *thread* de uma próxima troca), ou *exchanging* (tornando-se a segunda *thread* de uma próxima troca já iniciada por outra *thread*).
 
 - As solução em que as operações *acquire* são baseadas em máquinas de estados não permitem resolver as situações em que a semântica de sincronização é definida em função de transições de estado como acontece no caso do *read/write lock*.
+
+## Estilo kernel
+
+``` Java
+/**
+ * Semaphore following the kernel style, using an *implicit Java monitor*, with
+ * support for timeout on the acquire operation.
+ */
+
+class SemaphoreKernelStyleImplicitMonitor {
+	// implicit Java monitor that synchronizes access to the mutable shared state
+	// and supports also the control synchronization on its condition variable.
+	private final Object monitor = new Object();
+	
+	// the request type
+	private static class Request {
+		final int acquires;     // the number of requested permits
+		boolean done;           // true when completed
+		
+		Request(int acquires) { this.acquires = acquires; }
+	}
+	
+	// the queue of pending acquire requests
+	private final LinkedList<Request> reqQueue = new LinkedList<Request>();
+	
+	// the synchronization state: the number of available permits
+	private int permits;
+		
+	// initialize the semaphore
+	public SemaphoreKernelStyleImplicitMonitor(int initialPermits) {
+		if (initial < 0)
+			throw new IllegalArgumentException("initialPermits")
+		permits = initialPermits;
+	}
+	
+	// if there are sufficient permits, return true; false otherwise.
+	private boolean canAcquire(int acquires) { return permits >= acquires; }
+    
+	// if there are threads in the queue, return whether the number of available
+	// permits is sufficient to satisfy the request of the thread that
+	// is at the front of the queue
+	private boolean currentSynchStateAllowsAcquire() {
+		return reqQueue.size() > 0 && permits >= reqQueue.peek().acquires;
+	}
+	
+	// after acquire deduct the permissions granted
+	private void acquireSideEffect(int acquires) { permits -= acquires; }
+	
+	// update the available permits in accordance with the permits released
+	private void updateStateOnRelease(int releases) { permits += releases; }
+
+	// acquires the specified number of permits; return false when it times out
+	public boolean acquire(int acquires, long millisTimeout)  throws InterruptedException {
+		synchronized(monitor) {
+			// if the was previously interrupted, throw the appropriate exception
+			if (Thread.interrupted())
+				throw new InterruptedException();
+			// if the queue is empty and there are sufficient permits, decrement the
+			// number of available permits, and return success
+			if (reqQueue.size() == 0 && canAcquire(acquires)) {
+				acquireSideEffect(acquires);
+				return true;
+			}
+			
+			// the queue is not empty or there are not sufficient permits, so the
+			// current thread must enqueue a request and wait on the monitor
+			// condition variavel that a releaser thread complete the request
+			// on its behalf.
+			Request request = new Request(acquires);
+			reqQueue.addLast(request);
+
+			TimeoutHolder th = new TimeoutHolder(millisTimeout);
+			do {
+				try {
+					if (th.isTimed()) {
+						if ((millisTimeout = th.value()) <= 0) {
+							// the specified time limit has expired
+							reqQueue.remove(request);
+
+							// if the request was at the head of the queue and there are more blocked
+							// threads and some permits available, it is possible that this withdrawal
+							// creates conditions to satisfy requests from the next thread.
+							// for example, if after the remove of the request of the current thread,
+							// if there are two permits available and there are two threads in the queue
+							// requesting one permits each, there are mow conditions to satisfy the
+							// requests of those threads.
+							if (currentSynchStateAllowsAcquire())
+								performPossibleAcquires();
+							
+							// return failure
+							return false;
+						}
+						monitor.wait(millisTimeout);
+					} else
+						monitor.wait();
+				} catch (InterruptedException ie) {
+					// if the acquire operation was already done, re-assert interrupt
+					// and return normally; else remove request from queue and throw
+					// InterruptedException.
+					if (request.done) {
+						Thread.currentThread().interrupt();
+						return true;
+					}
+					reqQueue.remove(request);
+
+					// if this request was at the head of the queue and there are more blocked
+					// threads and some permits available, it is possible that this withdrawal
+					// creates conditions to satisfy requests from the next thread.
+					// for example, if after the remove of the request of the current thread,
+					// if there are two permits available and there are two threads in the queue
+					// requesting one permits each, there are mow conditions to satisfy the
+					// requests of those threads.
+					if (currentSynchStateAllowsAcquire())
+						performPossibleAcquires();
+					
+					// propagate InterrupedException
+					throw ie;
+				}
+			} while (!request.done);
+			// return success
+			return true;
+		}
+	}
+
+	// perform the possible pending acquires
+	private void performPossibleAcquires() {
+		boolean notify = false;
+		while (reqQueue.size() > 0) {
+			Request request = reqQueue.peek();
+			if (!canAcquire(request.acquires))
+				break;
+			
+			// complete a pending aqcuire request: (i) remove the request from the queue;
+			// (ii) consume the requested permits; (iii) mark the request as completed;
+			// (iv) ensure that that acquirer thread is notified. 
+			reqQueue.removeFirst();
+			acquireSideEffect(request.acquires);
+			request.done = true;
+			notify = true;
+		}
+		if (notify) {
+			// even if we release only one thread, we do not know its position of the queue
+			// of the condition variable, so it is necessary to notify all blocked threads,
+			// to make sure that the thread(s) in question is notified.
+			monitor.notifyAll();
+		}
+	}
+
+	//releases the specified number of permits
+	public void release(int releases) {
+		synchronized(monitor) { 
+			// return the release permits to the semaphore
+			updateStateOnRelease(releases);
+			// satisfies as many acquires as is possible
+			performPossibleAcquires();
+		}
+	}
+}
+```
